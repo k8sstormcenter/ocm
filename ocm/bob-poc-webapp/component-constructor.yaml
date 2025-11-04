@@ -1,0 +1,33 @@
+# yaml-language-server: $schema= https://ocm.software/schemas/configuration-schema.yaml
+components:
+  - name: bob.poc.ocm.software/webapp
+    version: "${artifactVersion}"
+    provider:
+      name: bill-of-behavior
+    #description: "Bob PoC Web App Component"
+
+    resources:
+      #----------------------- bob sample app components ------------------
+      - name: helm-chart-bob-sample-webapp # TODO: reference to Github Repo instead of local file but!
+        type: helmChart
+        version: ${artifactVersion}
+        input:
+          type: helm
+          path: ./../../helm/chart/mywebapp
+        # access:
+        #   type: gitHub
+        #   repoUrl: https://github.com/k8sstormcenter/bob/tree/main/example/mywebapp-chart
+        #   commit: 3623fd5c0d0853cd1d93345f13c51e532dedf412
+
+      - name: image-bob-sample-webapp
+        type: ociImage
+        version: "0.0.1-e323014ec9befb76bc551f8cc3bf158120150e2e277bae11844c2da6c56c0a2b"
+        access:
+          type: ociArtifact
+          imageReference: "ghcr.io/k8sstormcenter/webapp@sha256:e323014ec9befb76bc551f8cc3bf158120150e2e277bae11844c2da6c56c0a2b"
+
+    componentReferences:
+      # - name: ...
+      #   componentName: ....poc.ocm.software/....
+      #   # exact version will be set after other component-constructors have been transfered & published
+      #   version: ${artifactVersion}

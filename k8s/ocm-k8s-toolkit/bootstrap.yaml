@@ -1,0 +1,84 @@
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Repository
+metadata:
+  name: bob-ocm-repository
+spec:
+  repositorySpec:
+    baseUrl: ghcr.io/k8sstormcenter/ocm
+    type: OCIRegistry
+  interval: 1m
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Component
+metadata:
+  name: bob-component
+spec:
+  component: bob.poc.ocm.software/root
+  repositoryRef:
+    name: bob-ocm-repository
+  semver: 0.0.1-dev-17-gf6762c4
+  interval: 1m
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: bob-kro-rgd
+spec:
+  componentRef:
+    name: bob-component
+  resource:
+    byReference:
+      resource:
+        name: kro-rgd
+  interval: 1m
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Deployer
+metadata:
+  name: bob-kro-rgd
+spec:
+  resourceRef:
+    name: bob-kro-rgd
+    namespace: default
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+#      namespace: default
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: bob-kro-instance
+spec:
+  componentRef:
+    name: bob-component
+  resource:
+    byReference:
+      resource:
+        name: kro-instance
+  interval: 1m
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Deployer
+metadata:
+  name: bob-kro-instance
+spec:
+  resourceRef:
+    name: bob-kro-instance
+    namespace: default
+  # ocmConfig:
+#    - kind: Secret
+#      name: jfrog-image-pull-secret
+#      namespace: default

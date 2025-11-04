@@ -1,0 +1,329 @@
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: bob-sample-webapp
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: BoBSampleWebappInstance
+    spec:
+      prefix: string | default="bob-sample-webapp"
+    status:
+      conditionsComponents:
+        kubescape:
+          ocmResource: ${kubescape.status.conditions}
+          fluxOCIRepository: ${kubescapeHelmRepository.status.conditions}
+          fluxHelmRelease: ${kubescapeFluxHelmRelease.status.conditions}
+        kubescapeRuleset:
+          ocmResource: ${kubescapeRuleset.status.conditions}
+          fluxOCIRepository: ${kubescapeRulesetFluxOciRepository.status.conditions}
+          fluxHelmRelease: ${kubescapeRulesetFluxHelmRelease.status.conditions}
+        openebs:
+          ocmResource: ${openebsOCMResource.status.conditions}
+          fluxOCIRepository: ${openebsFluxOciRepository.status.conditions}
+          fluxHelmRelease: ${openebsFluxHelmRelease.status.conditions}
+        webapp:
+          ocmResource: ${webappOCMResource.status.conditions}
+          fluxOCIRepository: ${webappFluxOciRepository.status.conditions}
+          fluxHelmRelease: ${webappFluxHelmRelease.status.conditions}
+    # additionalPrinterColumns:
+    #   # Printer columns shown for the created custom resource
+    #   - jsonPath: .status.phase
+    #     name: Phase
+    #     type: string
+
+  resources:
+    # --------------------------- kubescape ---------------------------
+    # helm upgrade --install kubescape kubescape/kubescape-operator --version 1.29.0 -n honey --create-namespace --values kubescape/values.yaml
+    # OCM: bob.poc.ocm.software/kubescape - helm-chart-kubescape
+    - id: kubescape
+      readyWhen:
+        - ${has(kubescape.status.resource)}
+        - ${kubescape.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: "${schema.spec.prefix}-kubescape"
+        spec:
+          componentRef:
+            name: bob-component
+          resource:
+            byReference:
+              referencePath:
+                - name: kubescape
+              resource:
+                name: helm-chart-kubescape
+          # additionalStatusFields:
+          #   helmChart: resource.access.helmChart.split(":")[0]
+          #   helmChartVersion: resource.access.helmChart.split(":")[1]
+          interval: 30s
+          ocmConfig:
+            - kind: Secret
+              name: jfrog-image-pull-secret
+    - id: kubescapeHelmRepository
+      readyWhen:
+        - ${has(kubescapeHelmRepository.status.artifact)}
+        - ${kubescapeHelmRepository.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1
+        kind: HelmRepository
+        metadata:
+          name: "${schema.spec.prefix}-kubescape"
+        spec:
+          interval: 15m
+          url: ${kubescape.status.resource.access.?helmRepository}
+    - id: kubescapeFluxHelmRelease
+      readyWhen:
+        - ${kubescapeFluxHelmRelease.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: "${schema.spec.prefix}-kubescape"
+        spec:
+          interval: 15m
+          timeout: 5m
+          targetNamespace: honey
+          install:
+            createNamespace: true
+          chart:
+            spec:
+              chart: ${kubescape.status.resource.access.?helmChart}
+              version: "${kubescape.status.resource.access.?version}"
+              sourceRef:
+                kind: ${kubescapeHelmRepository.kind}
+                name: ${kubescapeHelmRepository.metadata.name}
+              interval: 5m
+          releaseName: ${kubescape.status.resource.access.?helmChart}
+          values:
+            nodeAgent:
+              image:
+                repository: quay.io/kubescape/node-agent
+                tag: sbob
+              config:
+                maxLearningPeriod: 10m
+                learningPeriod: 5m
+                updatePeriod: 10000m
+                ruleCooldown:
+                  ruleCooldownDuration: 0h
+                  ruleCooldownAfterCount: 1000000000
+                  ruleCooldownOnProfileFailure: false
+                  ruleCooldownMaxSize: 20000
+            capabilities:
+              runtimeDetection: enable
+              networkEventsStreaming: disable
+            alertCRD:
+              installDefault: true
+              scopeClustered: true
+            clusterName: bobexample
+            ksNamespace: honey
+            excludeNamespaces: "kubescape,kube-system,kube-public,kube-node-lease,kubeconfig,gmp-system,gmp-public,storm,lightening,cert-manager,kube-flannel,ingress-nginx"
+    # --------------------------- kubescape ruleset ---------------------------
+    #$(HELM) apply -f kubescape/ruleset.yaml
+    # bob.poc.ocm.software/kubescape-ruleset -> helm-chart-kubescape-ruleset
+    - id: kubescapeRuleset
+      readyWhen:
+        - ${has(kubescapeRuleset.status.resource)}
+        - ${kubescapeRuleset.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: "${schema.spec.prefix}-kubescape-ruleset"
+          annotations:
+            kro.dependency/waitintg.on: "${kubescapeFluxHelmRelease.metadata.name}"
+        spec:
+          componentRef:
+            name: bob-component
+          additionalStatusFields:
+            registry: resource.access.imageReference.toOCI().registry
+            repository: resource.access.imageReference.toOCI().repository
+            digest: resource.access.imageReference.toOCI().digest
+            tag: resource.access.imageReference.toOCI().tag
+          resource:
+            byReference:
+              referencePath:
+                - name: kubescape-ruleset
+              resource:
+                name: helm-chart-kubescape-ruleset
+          interval: 30s
+          ocmConfig:
+            - kind: Secret
+              name: jfrog-image-pull-secret
+    - id: kubescapeRulesetFluxOciRepository
+      readyWhen:
+        - ${has(kubescapeRulesetFluxOciRepository.status.artifact)}
+        - ${kubescapeRulesetFluxOciRepository.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: "${schema.spec.prefix}-kubescape-ruleset"
+        spec:
+          interval: 1m0s
+          url: oci://${kubescapeRuleset.status.additional.?registry}/${kubescapeRuleset.status.additional.?repository}
+          ref:
+            tag: ${kubescapeRuleset.status.additional.?tag}
+          secretRef:
+            name: jfrog-oci-pull-secret
+    - id: kubescapeRulesetFluxHelmRelease
+      readyWhen:
+        - ${kubescapeRulesetFluxHelmRelease.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: "${schema.spec.prefix}-kubescape-ruleset"
+        spec:
+          interval: 15m
+          timeout: 5m
+          targetNamespace: kubescape
+          chartRef:
+            kind: ${kubescapeRulesetFluxOciRepository.kind}
+            name: ${kubescapeRulesetFluxOciRepository.metadata.name}
+            namespace: ${kubescapeRulesetFluxOciRepository.metadata.namespace}
+          install:
+            createNamespace: true
+          releaseName: ${kubescapeRuleset.status.resource.access.?helmChart}
+    # --------------------------- openEBS ---------------------------
+    # kubectl apply -f https://openebs.github.io/charts/openebs-operator-lite.yaml
+    # kubectl apply -f https://openebs.github.io/charts/openebs-lite-sc.yaml
+    # kubectl apply -f kubescape/storage/sc.yaml
+    # OCM: bob.poc.ocm.software/openebs -> helm-chart-openebs
+    - id: openebsOCMResource
+      readyWhen:
+        - ${has(openebsOCMResource.status.resource)}
+        - ${openebsOCMResource.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: "${schema.spec.prefix}-openebs"
+        spec:
+          componentRef:
+            name: bob-component
+          additionalStatusFields:
+            registry: resource.access.imageReference.toOCI().registry
+            repository: resource.access.imageReference.toOCI().repository
+            digest: resource.access.imageReference.toOCI().digest
+            tag: resource.access.imageReference.toOCI().tag
+          #   helmChart: resource.access.helmChart.split(":")[0]
+          #   helmChartVersion: resource.access.helmChart.split(":")[1]
+          resource:
+            byReference:
+              referencePath:
+                - name: openebs
+              resource:
+                name: helm-chart-openebs
+          interval: 30s
+          ocmConfig:
+            - kind: Secret
+              name: jfrog-oci-pull-secret
+    - id: openebsFluxOciRepository
+      readyWhen:
+        - ${has(openebsFluxOciRepository.status.artifact)}
+        - ${openebsFluxOciRepository.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: "${schema.spec.prefix}-openebs"
+        spec:
+          interval: 1m0s
+          url: oci://${openebsOCMResource.status.additional.?registry}/${openebsOCMResource.status.additional.?repository}
+          ref:
+            tag: ${openebsOCMResource.status.additional.?tag}
+          secretRef:
+            name: jfrog-oci-pull-secret
+    - id: openebsFluxHelmRelease
+      readyWhen:
+        - ${openebsFluxHelmRelease.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: "${schema.spec.prefix}-openebs"
+        spec:
+          interval: 15m
+          timeout: 5m
+          targetNamespace: openebs
+          chartRef:
+            kind: ${openebsFluxOciRepository.kind}
+            name: ${openebsFluxOciRepository.metadata.name}
+            namespace: ${openebsFluxOciRepository.metadata.namespace}
+          install:
+            createNamespace: true
+          releaseName: ${openebsOCMResource.status.resource.access.?helmChart}
+    # ----------------------- bob sample webapp components ------------------
+    #helm upgrade --install webapp example/mywebapp-chart --namespace webapp --create-namespace --values example/mywebapp-chart/values.yaml
+    # bob.poc.ocm.software/webapp ->helm-chart-bob-sample-webapp
+    - id: webappOCMResource
+      readyWhen:
+        - ${has(webappOCMResource.status.resource)}
+        - ${webappOCMResource.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: "${schema.spec.prefix}-webapp"
+          annotations:
+            kro.dependency/waiting.for0: "kind:${kubescapeFluxHelmRelease.kind} ${kubescapeFluxHelmRelease.metadata.name}"
+            kro.dependency/waiting.for1: "kind:${kubescapeRulesetFluxHelmRelease.kind} ${kubescapeRulesetFluxHelmRelease.metadata.name}"
+            kro.dependency/waiting.for2: "kind:${openebsFluxHelmRelease.kind} ${openebsFluxHelmRelease.metadata.name}"
+        spec:
+          componentRef:
+            name: bob-component
+          additionalStatusFields:
+            registry: resource.access.imageReference.toOCI().registry
+            repository: resource.access.imageReference.toOCI().repository
+            digest: resource.access.imageReference.toOCI().digest
+            tag: resource.access.imageReference.toOCI().tag
+          #   helmChart: resource.access.helmChart.split(":")[0]
+          #   helmChartVersion: resource.access.helmChart.split(":")[1]
+          resource:
+            byReference:
+              referencePath:
+                - name: webapp
+              resource:
+                name: helm-chart-bob-sample-webapp
+          interval: 30s
+          ocmConfig:
+            - kind: Secret
+              name: jfrog-oci-pull-secret
+    - id: webappFluxOciRepository
+      readyWhen:
+        - ${has(webappFluxOciRepository.status.artifact)}
+        - ${webappFluxOciRepository.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: "${schema.spec.prefix}-webapp"
+        spec:
+          interval: 1m0s
+          url: oci://${webappOCMResource.status.additional.?registry}/${webappOCMResource.status.additional.?repository}
+          ref:
+            tag: ${webappOCMResource.status.additional.?tag}
+          secretRef:
+            name: jfrog-oci-pull-secret
+    - id: webappFluxHelmRelease
+      readyWhen:
+        - ${webappFluxHelmRelease.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: "${schema.spec.prefix}-webapp"
+        spec:
+          interval: 15m
+          timeout: 5m
+          targetNamespace: webapp
+          chartRef:
+            kind: ${webappFluxOciRepository.kind}
+            name: ${webappFluxOciRepository.metadata.name}
+            namespace: ${webappFluxOciRepository.metadata.namespace}
+          install:
+            createNamespace: true
+          releaseName: webapp

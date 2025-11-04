@@ -1,0 +1,30 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux
+  namespace: default
+spec:
+  interval: 1m
+  targetNamespace: default
+  sourceRef:
+    kind: GitRepository
+    name: poc-ocm-bill-of-behavior
+  path: "./k8s/flux/"
+  prune: true
+  timeout: 1m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: poc-ocm-bill-of-behavior-kro-rgd
+  namespace: default
+spec:
+  interval: 1m
+  targetNamespace: default
+  sourceRef:
+    kind: GitRepository
+    name: poc-ocm-bill-of-behavior
+  path: "./k8s/ocm-k8s-toolkit/"
+  prune: true
+  timeout: 1m

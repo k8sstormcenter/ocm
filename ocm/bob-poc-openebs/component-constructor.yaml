@@ -1,0 +1,44 @@
+# yaml-language-server: $schema= https://ocm.software/schemas/configuration-schema.yaml
+components:
+  - name: bob.poc.ocm.software/openebs
+    version: "${artifactVersion}"
+    provider:
+      name: bill-of-behavior
+    #description: "Bob PoC OpenEBS Component"
+    resources:
+      #---------------------- openebs components ------------------
+      # OpenEBS helps Developers and Platform SREs easily deploy Kubernetes Stateful Workloads that require fast and highly reliable Container Native Storage. OpenEBS turns any storage available on the Kubernetes worker nodes into local or distributed Kubernetes Persistent Volumes.
+      #
+      - name: helm-chart-openebs
+        type: helmChart
+        version: ${artifactVersion}
+        input:
+          type: helm
+          path: ./../../helm/chart/openebs
+
+      - name: image-openebs-ndm-operator
+        type: ociImage
+        version: "2.1.0"
+        access:
+          type: ociArtifact
+          imageReference: "docker.io/openebs/node-disk-operator:2.1.0"
+
+      - name: image-openebs-ndm-cluster-exporter
+        type: ociImage
+        version: "2.1.0"
+        access:
+          type: ociArtifact
+          imageReference: "docker.io/openebs/node-disk-exporter:2.1.0"
+
+      - name: image-openebs-localpv-provisioner
+        type: ociImage
+        version: "3.5.0"
+        access:
+          type: ociArtifact
+          imageReference: "docker.io/openebs/provisioner-localpv:3.5.0"
+
+    componentReferences:
+      # - name: ...
+      #   componentName: ....poc.ocm.software/....
+      #   # exact version will be set after other component-constructors have been transfered & published
+      #   version: ${artifactVersion}

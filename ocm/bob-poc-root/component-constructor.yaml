@@ -1,0 +1,38 @@
+# yaml-language-server: $schema= https://ocm.software/schemas/configuration-schema.yaml
+components:
+  - name: bob.poc.ocm.software/root
+    version: "${artifactVersion}"
+    provider:
+      name: bill-of-behavior
+    #description: "Bob PoC Root Component"
+
+    resources:
+      ################## converge cloud core infrastructure ##################
+      - name: kro-rgd
+        type: blob
+        version: ${artifactVersion}
+        input:
+          type: file
+          path: ./../../k8s/kro/kro-rgd.yaml
+
+      - name: kro-instance
+        type: blob
+        version: ${artifactVersion}
+        input:
+          type: file
+          path: ./../../k8s/kro/kro-instance.yaml
+
+    componentReferences:
+      - name: webapp
+        componentName: bob.poc.ocm.software/webapp
+        version: ${artifactVersion}
+      - name: kubescape-ruleset
+        componentName: bob.poc.ocm.software/kubescape-ruleset
+        version: ${artifactVersion}
+      - name: openebs # only required for kind clusters
+        componentName: bob.poc.ocm.software/openebs
+        version: ${artifactVersion}
+      - name: kubescape
+        componentName: bob.poc.ocm.software/kubescape
+        version: ${artifactVersion}
+        # exact version will be set after other component-constructors have been transfered & published
