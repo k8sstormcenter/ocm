@@ -1,0 +1,6 @@
+apiVersion: kro.run/v1alpha1
+kind: BoBSampleWebappInstance
+metadata:
+  name: bob-sample-webapp
+spec:
+  prefix: bob-sample-webapp

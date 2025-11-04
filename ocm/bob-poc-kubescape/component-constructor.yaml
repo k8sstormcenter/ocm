@@ -1,0 +1,51 @@
+# yaml-language-server: $schema= https://ocm.software/schemas/configuration-schema.yaml
+components:
+  - name: bob.poc.ocm.software/kubescape
+    version: "${artifactVersion}"
+    provider:
+      name: bill-of-behavior
+    #description: "Bob PoC Kubescape Components"
+
+    resources:
+      #----------- kubescape component references -----------
+      - name: helm-chart-kubescape
+        type: helmChart
+        version: "1.29.0"
+        access:
+          type: helm
+          helmChart: kubescape-operator
+          version: 1.29.0
+          helmRepository: https://kubescape.github.io/helm-charts/
+
+      - name: image-kubescape-storage
+        type: ociImage
+        version: "0.0.206"
+        access:
+          type: ociArtifact
+          imageReference: "quay.io/kubescape/storage:v0.0.206"
+
+      - name: image-kubescape-operator
+        type: ociImage
+        version: "0.2.97"
+        access:
+          type: ociArtifact
+          imageReference: "quay.io/kubescape/operator:v0.2.97"
+
+      - name: image-kubescape-kubevuln
+        type: ociImage
+        version: "0.3.82"
+        access:
+          type: ociArtifact
+          imageReference: "quay.io/kubescape/kubevuln:v0.3.82"
+
+      - name: image-kubescape
+        type: ociImage
+        version: "3.0.37"
+        access:
+          type: ociArtifact
+          imageReference: "quay.io/kubescape/kubescape:v3.0.37"
+    componentReferences:
+      # - name: ...
+      #   componentName: ....poc.ocm.software/....
+      #   # exact version will be set after other component-constructors have been transfered & published
+      #   version: ${artifactVersion}

@@ -1,0 +1,13 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: poc-ocm-bill-of-behavior
+  namespace: default
+spec:
+  interval: 1m
+  #secretRef:
+  #  name: github-pull-secret
+  url: https://github.com/k8sstormcenter/ocm.git
+  ref:
+    branch: main

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema= https://ocm.software/schemas/configuration-schema.yaml
+components:
+  - name: bob.poc.ocm.software/kubescape-ruleset
+    version: "${artifactVersion}"
+    provider:
+      name: bill-of-behavior
+    #description: "Bob PoC Kubescape Runtime Rules Components"
+
+    resources:
+      - name: helm-chart-kubescape-ruleset
+        type: helmChart
+        version: ${artifactVersion}
+        input:
+          type: helm
+          path: ./../../helm/chart/kubescape-ruleset
+
+    componentReferences:
+      # - name: ...
+      #   componentName: ....poc.ocm.software/....
+      #   # exact version will be set after other component-constructors have been transfered & published
+      #   version: ${artifactVersion}
